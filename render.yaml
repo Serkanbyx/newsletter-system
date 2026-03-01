@@ -7,6 +7,7 @@ services:
     envVars:
       - key: PORT
         value: 3000
+      # SMTP fields are optional — leave empty for demo mode (Ethereal)
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
@@ -16,8 +17,6 @@ services:
       - key: SMTP_PASS
         sync: false
       - key: MAIL_FROM_NAME
-        sync: false
+        value: Newsletter System
       - key: MAIL_FROM_ADDRESS
-        sync: false
-      - key: BASE_URL
         sync: false

@@ -1,4 +1,5 @@
-const { getTransporter } = require("../config/mailer");
+const nodemailer = require("nodemailer");
+const { getTransporter, getIsDemoMode } = require("../config/mailer");
 const Subscriber = require("../models/subscriber");
 const Newsletter = require("../models/newsletter");
 
@@ -21,8 +22,8 @@ const sendToSubscriber = async (newsletter, subscriber) => {
     </div>
   `;
 
-  await transporter.sendMail({
-    from: `"${process.env.MAIL_FROM_NAME}" <${process.env.MAIL_FROM_ADDRESS}>`,
+  const info = await transporter.sendMail({
+    from: `"${process.env.MAIL_FROM_NAME || "Newsletter"}" <${process.env.MAIL_FROM_ADDRESS || "demo@newsletter.test"}>`,
     to: subscriber.email,
     subject: newsletter.subject,
     html: htmlContent,
@@ -30,6 +31,11 @@ const sendToSubscriber = async (newsletter, subscriber) => {
       "List-Unsubscribe": `<${unsubscribeUrl}>`,
     },
   });
+
+  if (getIsDemoMode()) {
+    const previewUrl = nodemailer.getTestMessageUrl(info);
+    console.log(`[Demo] Email preview for ${subscriber.email}: ${previewUrl}`);
+  }
 };
 
 const sendNewsletter = async (newsletterId) => {
