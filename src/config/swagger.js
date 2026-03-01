@@ -8,6 +8,10 @@ const options = {
       version: "1.0.0",
       description:
         "Email automation backend with subscribe/unsubscribe and scheduled mail sending",
+      contact: {
+        name: "Serkanby",
+        url: "https://serkanbayraktar.com/",
+      },
     },
     servers: [
       {

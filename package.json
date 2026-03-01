@@ -13,6 +13,10 @@
     "nodemailer",
     "cron"
   ],
+  "author": {
+    "name": "Serkanby",
+    "url": "https://serkanbayraktar.com/"
+  },
   "license": "MIT",
   "dependencies": {
     "better-sqlite3": "^12.6.2",
