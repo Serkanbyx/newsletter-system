@@ -94,6 +94,14 @@ class Newsletter {
       "INSERT INTO send_logs (newsletter_id, subscriber_id, status, error_message) VALUES (?, ?, ?, ?)"
     ).run(newsletterId, subscriberId, status, errorMessage);
   }
+
+  static countByStatus() {
+    const db = getDatabase();
+    const rows = db
+      .prepare("SELECT status, COUNT(*) as count FROM newsletters GROUP BY status")
+      .all();
+    return rows.reduce((acc, row) => ({ ...acc, [row.status]: row.count }), {});
+  }
 }
 
 module.exports = Newsletter;

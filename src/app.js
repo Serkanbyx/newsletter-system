@@ -2,6 +2,7 @@ const express = require("express");
 const swaggerUi = require("swagger-ui-express");
 const { swaggerSpec } = require("./config/swagger");
 const { errorHandler } = require("./middleware/errorHandler");
+const { apiLimiter } = require("./middleware/rateLimiter");
 const subscriberRoutes = require("./routes/subscriberRoutes");
 const newsletterRoutes = require("./routes/newsletterRoutes");
 const { version } = require("../package.json");
@@ -9,6 +10,7 @@ const { version } = require("../package.json");
 const app = express();
 
 app.use(express.json());
+app.use("/api", apiLimiter);
 
 // Welcome page
 app.get("/", (_req, res) => {
@@ -267,7 +269,7 @@ app.get("/", (_req, res) => {
     <p class="version">v${version}</p>
     <div class="links">
       <a href="/api-docs" class="btn-primary">API Documentation</a>
-      <a href="/health" class="btn-secondary">Health Check</a>
+      <a href="/health" class="btn-secondary">System Health</a>
     </div>
     <footer class="sign">
       Created by
@@ -287,9 +289,102 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api/subscribers", subscriberRoutes);
 app.use("/api/newsletters", newsletterRoutes);
 
-// Health check
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Detailed health check
+ *     tags: [System]
+ *     description: Returns system health with database, SMTP, uptime, memory, and statistics
+ *     responses:
+ *       200:
+ *         description: System health report
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   enum: [healthy, degraded]
+ *                 timestamp:
+ *                   type: string
+ *                 uptime:
+ *                   type: string
+ *                 version:
+ *                   type: string
+ *                 services:
+ *                   type: object
+ *                   properties:
+ *                     database:
+ *                       type: string
+ *                     smtp:
+ *                       type: object
+ *                       properties:
+ *                         status:
+ *                           type: string
+ *                         mode:
+ *                           type: string
+ *                           enum: [demo, production]
+ *                 stats:
+ *                   type: object
+ *                   properties:
+ *                     activeSubscribers:
+ *                       type: integer
+ *                     newsletters:
+ *                       type: object
+ *                 memory:
+ *                   type: object
+ *                   properties:
+ *                     rss:
+ *                       type: string
+ *                     heapUsed:
+ *                       type: string
+ */
+app.get("/health", async (_req, res) => {
+  const Subscriber = require("./models/subscriber");
+  const Newsletter = require("./models/newsletter");
+  const { getTransporter, getIsDemoMode } = require("./config/mailer");
+
+  let dbStatus = "ok";
+  let subscriberCount = 0;
+  let newsletterStats = {};
+  try {
+    subscriberCount = Subscriber.countActive();
+    newsletterStats = Newsletter.countByStatus();
+  } catch {
+    dbStatus = "error";
+  }
+
+  let smtpStatus = "ok";
+  try {
+    const transporter = getTransporter();
+    if (transporter) await transporter.verify();
+    else smtpStatus = "not_initialized";
+  } catch {
+    smtpStatus = "error";
+  }
+
+  const overallStatus = dbStatus === "ok" && smtpStatus !== "error" ? "healthy" : "degraded";
+
+  res.json({
+    status: overallStatus,
+    timestamp: new Date().toISOString(),
+    uptime: `${Math.floor(process.uptime())}s`,
+    version,
+    services: {
+      database: dbStatus,
+      smtp: { status: smtpStatus, mode: getIsDemoMode() ? "demo" : "production" },
+    },
+    stats: {
+      activeSubscribers: subscriberCount,
+      newsletters: newsletterStats,
+    },
+    memory: {
+      rss: `${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`,
+      heapUsed: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
+    },
+  });
 });
 
 // 404 handler

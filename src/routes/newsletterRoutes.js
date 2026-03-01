@@ -1,6 +1,7 @@
 const { Router } = require("express");
 const { body } = require("express-validator");
 const { validate } = require("../middleware/validate");
+const { strictLimiter } = require("../middleware/rateLimiter");
 const ctrl = require("../controllers/newsletterController");
 
 const router = Router();
@@ -185,6 +186,7 @@ router.delete("/:id", ctrl.remove);
  */
 router.post(
   "/:id/schedule",
+  strictLimiter,
   [
     body("scheduledAt")
       .notEmpty()
@@ -216,7 +218,7 @@ router.post(
  *       404:
  *         description: Newsletter not found
  */
-router.post("/:id/send", ctrl.sendNow);
+router.post("/:id/send", strictLimiter, ctrl.sendNow);
 
 /**
  * @swagger

@@ -249,13 +249,14 @@ Edit the HTML template in `src/services/emailService.js` to match your brand's d
 - ✅ Request validation with express-validator
 - ✅ Global error handling middleware
 - ✅ Render.com deployment configuration
+- ✅ Rate limiting and throttling (general API + strict limits on sensitive endpoints)
+- ✅ Enhanced health check with DB, SMTP, stats, uptime and memory info
 
 ### Future Features
 
 - 🔮 [ ] Email template builder with drag-and-drop
 - 🔮 [ ] Subscriber segmentation and tagging
 - 🔮 [ ] Open/click tracking analytics
-- 🔮 [ ] Rate limiting and throttling
 - 🔮 [ ] Admin dashboard UI
 - 🔮 [ ] Bulk import/export subscribers (CSV)
 - 🔮 [ ] Webhook integrations

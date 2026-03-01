@@ -1,6 +1,7 @@
 const { Router } = require("express");
 const { body } = require("express-validator");
 const { validate } = require("../middleware/validate");
+const { strictLimiter } = require("../middleware/rateLimiter");
 const ctrl = require("../controllers/subscriberController");
 
 const router = Router();
@@ -73,6 +74,7 @@ router.get("/", ctrl.getAll);
  */
 router.post(
   "/subscribe",
+  strictLimiter,
   [
     body("email").isEmail().normalizeEmail().withMessage("Valid email is required"),
     body("name").trim().notEmpty().withMessage("Name is required"),
