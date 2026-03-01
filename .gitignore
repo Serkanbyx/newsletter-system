@@ -1,0 +1,23 @@
+node_modules/
+
+# Environment variables (NEVER commit real credentials)
+.env
+.env.local
+.env.production
+
+# SQLite database files
+*.db
+*.db-wal
+*.db-shm
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
