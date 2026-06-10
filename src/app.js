@@ -9,6 +9,10 @@ const { version } = require("../package.json");
 
 const app = express();
 
+// Trust the first proxy hop (e.g. Render) so rate limiting and client IP
+// detection use the real client address from X-Forwarded-For.
+app.set("trust proxy", 1);
+
 app.use(express.json());
 app.use("/api", apiLimiter);
 
@@ -341,10 +345,33 @@ app.use("/api/newsletters", newsletterRoutes);
  *                     heapUsed:
  *                       type: string
  */
+const SMTP_HEALTH_TTL_MS = 60 * 1000;
+let smtpHealthCache = { status: null, checkedAt: 0 };
+
+const getSmtpStatus = async () => {
+  const now = Date.now();
+  if (smtpHealthCache.status && now - smtpHealthCache.checkedAt < SMTP_HEALTH_TTL_MS) {
+    return smtpHealthCache.status;
+  }
+
+  const { getTransporter } = require("./config/mailer");
+  let status = "ok";
+  try {
+    const transporter = getTransporter();
+    if (transporter) await transporter.verify();
+    else status = "not_initialized";
+  } catch {
+    status = "error";
+  }
+
+  smtpHealthCache = { status, checkedAt: now };
+  return status;
+};
+
 app.get("/health", async (_req, res) => {
   const Subscriber = require("./models/subscriber");
   const Newsletter = require("./models/newsletter");
-  const { getTransporter, getIsDemoMode } = require("./config/mailer");
+  const { getIsDemoMode } = require("./config/mailer");
 
   let dbStatus = "ok";
   let subscriberCount = 0;
@@ -356,14 +383,7 @@ app.get("/health", async (_req, res) => {
     dbStatus = "error";
   }
 
-  let smtpStatus = "ok";
-  try {
-    const transporter = getTransporter();
-    if (transporter) await transporter.verify();
-    else smtpStatus = "not_initialized";
-  } catch {
-    smtpStatus = "error";
-  }
+  const smtpStatus = await getSmtpStatus();
 
   const overallStatus = dbStatus === "ok" && smtpStatus !== "error" ? "healthy" : "degraded";
 

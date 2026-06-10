@@ -1,11 +1,12 @@
 const swaggerJsdoc = require("swagger-jsdoc");
+const { version } = require("../../package.json");
 
 const options = {
   definition: {
     openapi: "3.0.0",
     info: {
       title: "Newsletter System API",
-      version: "1.0.0",
+      version,
       description:
         "Email automation backend with subscribe/unsubscribe and scheduled mail sending",
       contact: {

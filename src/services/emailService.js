@@ -3,8 +3,11 @@ const { getTransporter, getIsDemoMode } = require("../config/mailer");
 const Subscriber = require("../models/subscriber");
 const Newsletter = require("../models/newsletter");
 
+const getBaseUrl = () =>
+  process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+
 const buildUnsubscribeUrl = (token) =>
-  `${process.env.BASE_URL}/api/subscribers/unsubscribe/${token}`;
+  `${getBaseUrl()}/api/subscribers/unsubscribe/${token}`;
 
 const sendToSubscriber = async (newsletter, subscriber) => {
   const transporter = getTransporter();
@@ -38,6 +41,30 @@ const sendToSubscriber = async (newsletter, subscriber) => {
   }
 };
 
+// Number of emails dispatched in parallel per batch. Keeps throughput high
+// without overwhelming the SMTP provider's connection/rate limits.
+const SEND_CONCURRENCY = 5;
+
+const deliverToSubscriber = async (newsletter, subscriber) => {
+  try {
+    await sendToSubscriber(newsletter, subscriber);
+    Newsletter.addLog({
+      newsletterId: newsletter.id,
+      subscriberId: subscriber.id,
+      status: "sent",
+    });
+    return true;
+  } catch (error) {
+    Newsletter.addLog({
+      newsletterId: newsletter.id,
+      subscriberId: subscriber.id,
+      status: "failed",
+      errorMessage: error.message,
+    });
+    return false;
+  }
+};
+
 const sendNewsletter = async (newsletterId) => {
   const newsletter = Newsletter.findById(newsletterId);
   if (!newsletter) throw new Error("Newsletter not found");
@@ -54,23 +81,13 @@ const sendNewsletter = async (newsletterId) => {
   let successCount = 0;
   let failCount = 0;
 
-  for (const subscriber of subscribers) {
-    try {
-      await sendToSubscriber(newsletter, subscriber);
-      Newsletter.addLog({
-        newsletterId,
-        subscriberId: subscriber.id,
-        status: "sent",
-      });
-      successCount++;
-    } catch (error) {
-      Newsletter.addLog({
-        newsletterId,
-        subscriberId: subscriber.id,
-        status: "failed",
-        errorMessage: error.message,
-      });
-      failCount++;
+  for (let i = 0; i < subscribers.length; i += SEND_CONCURRENCY) {
+    const batch = subscribers.slice(i, i + SEND_CONCURRENCY);
+    const results = await Promise.all(
+      batch.map((subscriber) => deliverToSubscriber(newsletter, subscriber))
+    );
+    for (const delivered of results) {
+      delivered ? successCount++ : failCount++;
     }
   }
 

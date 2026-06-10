@@ -39,8 +39,10 @@ class Newsletter {
 
   static schedule(id, scheduledAt) {
     const db = getDatabase();
+    // Normalize to SQLite's UTC "YYYY-MM-DD HH:MM:SS" format so the
+    // scheduler comparison against datetime('now') stays consistent.
     db.prepare(
-      "UPDATE newsletters SET status = 'scheduled', scheduled_at = ? WHERE id = ? AND status = 'draft'"
+      "UPDATE newsletters SET status = 'scheduled', scheduled_at = datetime(?) WHERE id = ? AND status = 'draft'"
     ).run(scheduledAt, id);
     return this.findById(id);
   }

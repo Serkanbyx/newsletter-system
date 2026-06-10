@@ -135,6 +135,8 @@ cron.schedule("* * * * *", async () => {
 
 Each email includes an unsubscribe link with a unique token per subscriber. In demo mode (no SMTP configured), Ethereal generates preview URLs for testing.
 
+Emails are dispatched in concurrent batches (5 at a time by default) to keep throughput high without overwhelming the SMTP provider's connection and rate limits. Every delivery is recorded per subscriber in `send_logs`.
+
 ### Database Schema
 
 ```
@@ -201,6 +203,8 @@ src/
 └── server.js                # Entry point & bootstrap
 ```
 
+> For a full step-by-step build playbook, see [docs/build-guide.md](docs/build-guide.md).
+
 ## Customization
 
 ### Configure SMTP Provider
@@ -234,6 +238,15 @@ cron.schedule("*/5 * * * *", checkScheduledNewsletters);
 
 Edit the HTML template in `src/services/emailService.js` to match your brand's design and style.
 
+### Adjust Send Concurrency
+
+Change the `SEND_CONCURRENCY` constant in `src/services/emailService.js` to control how many emails are sent in parallel per batch:
+
+```javascript
+// Send 10 emails in parallel instead of the default 5
+const SEND_CONCURRENCY = 10;
+```
+
 ## Features in Detail
 
 ### Completed Features
@@ -251,6 +264,8 @@ Edit the HTML template in `src/services/emailService.js` to match your brand's d
 - ✅ Render.com deployment configuration
 - ✅ Rate limiting and throttling (general API + strict limits on sensitive endpoints)
 - ✅ Enhanced health check with DB, SMTP, stats, uptime and memory info
+- ✅ Concurrent batch email delivery for high-throughput sending
+- ✅ Proxy-aware rate limiting (`trust proxy`) for accurate client IP detection behind reverse proxies
 
 ### Future Features
 

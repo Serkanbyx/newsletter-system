@@ -20,3 +20,6 @@ services:
         value: Newsletter System
       - key: MAIL_FROM_ADDRESS
         sync: false
+      # Public base URL used to build unsubscribe links (e.g. https://your-app.onrender.com)
+      - key: BASE_URL
+        sync: false
